@@ -19,9 +19,9 @@
   when: vault_server and ansible_service_mgr == "systemd"
   register: vault_service_task_systemd
 
-- name: Start vault server
+- name: Start vault
   service:
-    name: vault-server
+    name: vault
     state: restarted
   when: ansible_service_mgr == "upstart" and (vault_log_task|changed or vault_service_task_upstart|changed)
 
