@@ -1,89 +1,22 @@
-#!/bin/sh
-# vault service script
+description "Vault"
 
-VAULT_DIR="{{vault_dir}}"
-VAULT_USER="{{vault_user}}"
-USER=$(whoami)
-if [ $USER != "root" ]
-then
-	echo "Only root can run vault-server service"
-	exit 1
-fi
+start on runlevel [2345]
+stop on runlevel [!2345]
 
+respawn
 
-usage() {
-	echo "Usage: `basename $0`: <start|stop|status|restart>"
-	exit 1
-}
+console log
 
-start() {
-	status
-	if [ $PID -gt 0 ]
-	then
-		echo "vault server daemon was already started. PID: $PID"
-		return $PID
-	fi
-	echo "Starting vault server daemon..."
-	VAULT_OPTIONS=""
-    {% if vault_server_mode == 'development' %}
-    VAULT_OPTIONS="-dev"
-    {% else %}
-    VAULT_OPTIONS="-config={{vault_server_config_path}} -log-level={{vault_server_log_level}}"
-    {% endif %}
-	su $VAULT_USER -c "/usr/bin/nohup vault server $VAULT_OPTIONS 1>{{vault_server_log_dir}}/vault.log 2>{{vault_server_log_dir}}/vault.err &"
-}
+script
+  if [ -f "/etc/service/vault" ]; then
+    . /etc/service/vault
+  fi
 
-stop() {
-	status
-	if [ $PID -eq 0 ]
-	then
-		echo "vault server daemon is already not running"
-		return 0
-	fi
-	echo "Stopping vault server daemon..."
-	kill $PID
-}
+  # Make sure to use all our CPUs, because Vault can block a scheduler thread
+  export GOMAXPROCS=`nproc`
 
-status() {
-	PID=`ps -ef | grep "vault server" | grep -v grep | awk '{print $2}'`
-	if [ "x$PID" = "x" ]
-	then
-		PID=0
-	fi
-
-	# if PID is greater than 0 then vault server is running, else it is not
-	return $PID
-}
-
-if [ "x$1" = "xstart" ]
-then
-	start
-	exit 0
-fi
-
-if [ "x$1" = "xstop" ]
-then
-	stop
-	exit 0
-fi
-
-if [ "x$1" = "xrestart" ]
-then
-	stop
-	start
-	exit 0
-fi
-
-if [ "x$1" = "xstatus" ]
-then
-	status
-	if [ $PID -gt 0 ]
-	then
-		echo "vault server daemon is running with PID: $PID"
-	else
-		echo "vault server daemon is NOT running"
-	fi
-	exit $PID
-fi
-
-usage
+  exec /usr/bin/vault server \
+    -config="/etc/vault.d/vault.hcl" \
+    \$${VAULT_FLAGS} \
+    >>/var/log/vault.log 2>&1
+end script

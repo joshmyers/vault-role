@@ -4,7 +4,7 @@
 - name: Create vault service script
   template:
     src: vault-server.j2
-    dest: /etc/init.d/vault-server
+    dest: /etc/init/vault.conf
     mode: a+x
     owner: root
   when: vault_server and ansible_service_mgr == "upstart"
